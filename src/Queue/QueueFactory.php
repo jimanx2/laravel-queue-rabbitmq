@@ -20,6 +20,10 @@ class QueueFactory
             return new HorizonRabbitMQQueue($queueConfig);
         }
 
+        if (strtolower($worker) == 'spiral/roadrunner') {
+            return new SpiralRoadRunnerRabbitMQQueue($queueConfig);
+        }
+
         return new $worker($queueConfig);
     }
 }

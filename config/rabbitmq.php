@@ -21,8 +21,7 @@ return [
         ],
     ],
 
-    'options' => [
-    ],
+    'options' => [],
 
     /*
      * Set to "horizon" if you wish to use Laravel Horizon.
