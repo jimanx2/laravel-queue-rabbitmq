@@ -4,14 +4,26 @@ namespace VladimirYuldashev\LaravelQueueRabbitMQ\SpiralRoadrunner;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Crypt;
 use Laravel\Horizon\Events\JobDeleted;
 use Laravel\Horizon\Events\JobPushed;
 use Laravel\Horizon\Events\JobReserved;
 use Laravel\Horizon\JobPayload;
-use PhpAmqpLib\Exception\AMQPProtocolChannelException;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Jobs\RabbitMQJob;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\RabbitMQQueue as BaseRabbitMQQueue;
+
+use PhpAmqpLib\Channel\AMQPChannel;
+use PhpAmqpLib\Connection\AbstractConnection;
+use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
+use PhpAmqpLib\Exception\AMQPConnectionClosedException;
+use PhpAmqpLib\Exception\AMQPProtocolChannelException;
+use PhpAmqpLib\Exception\AMQPRuntimeException;
+use PhpAmqpLib\Exchange\AMQPExchangeType;
+use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
 
 class RabbitMQQueue extends BaseRabbitMQQueue
 {
@@ -36,7 +48,7 @@ class RabbitMQQueue extends BaseRabbitMQQueue
     /**
      * Create a AMQP message.
      */
-    protected function createMessage($payload, int $attempts = 0): array
+    protected function createMessage($payload, int $attempts = 0, $jobClass = null): array
     {
         $properties = [
             'content_type' => 'application/json',
@@ -64,12 +76,16 @@ class RabbitMQQueue extends BaseRabbitMQQueue
             }
         }
 
+        $properties['payload'] = $payload;
+
         $message = new AMQPMessage($payload, $properties);
 
         $message->set('application_headers', new AMQPTable([
             'laravel' => [
                 'attempts' => $attempts,
             ],
+            'rr_id' => $correlationId,
+            'rr_job' => $jobClass
         ]));
 
         return [
@@ -89,9 +105,7 @@ class RabbitMQQueue extends BaseRabbitMQQueue
 
         $this->declareDestination($destination, $exchange, $exchangeType);
 
-        [$message, $correlationId] = $this->createMessage($payload, $attempts);
-
-        dump($message);
+        [$message, $correlationId] = $this->createMessage($payload, $attempts, $options['jobClass']);
 
         $this->publishBasic($message, $exchange, $destination, true);
 

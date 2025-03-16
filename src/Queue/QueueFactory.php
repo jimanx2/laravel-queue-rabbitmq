@@ -4,6 +4,7 @@ namespace VladimirYuldashev\LaravelQueueRabbitMQ\Queue;
 
 use Illuminate\Support\Arr;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Horizon\RabbitMQQueue as HorizonRabbitMQQueue;
+use VladimirYuldashev\LaravelQueueRabbitMQ\SpiralRoadrunner\RabbitMQQueue as SpiralRoadRunnerRabbitMQQueue;
 
 class QueueFactory
 {
