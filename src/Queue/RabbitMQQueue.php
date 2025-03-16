@@ -106,10 +106,8 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
             $this->createPayload($job, $this->getQueue($queue), $data),
             $queue,
             null,
-            function ($payload, $queue) use ($job) {
-                return $this->pushRaw($payload, $queue, [
-                    'job' => $job
-                ]);
+            function ($payload, $queue) {
+                return $this->pushRaw($payload, $queue);
             }
         );
     }
@@ -121,11 +119,11 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
      */
     public function pushRaw($payload, $queue = null, array $options = []): int|string|null
     {
-        [$destination, $exchange, $exchangeType, $attempts, $job] = $this->publishProperties($queue, $options);
+        [$destination, $exchange, $exchangeType, $attempts] = $this->publishProperties($queue, $options);
 
         $this->declareDestination($destination, $exchange, $exchangeType);
 
-        [$message, $correlationId] = $this->createMessage($payload, $attempts, $job);
+        [$message, $correlationId] = $this->createMessage($payload, $attempts);
 
         $this->publishBasic($message, $exchange, $destination, true);
 
@@ -513,7 +511,7 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
     /**
      * Create a AMQP message.
      */
-    protected function createMessage($payload, int $attempts = 0, string $job = null): array
+    protected function createMessage($payload, int $attempts = 0): array
     {
         $properties = [
             'content_type' => 'application/json',
@@ -544,8 +542,6 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
         $message = new AMQPMessage($payload, $properties);
 
         $message->set('application_headers', new AMQPTable([
-            'rr_job'  => $job,
-            'rr_id'   => $correlationId,
             'laravel' => [
                 'attempts' => $attempts,
             ],
